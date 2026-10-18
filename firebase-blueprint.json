@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User account details and settings",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Avatar photo URL"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Account creation timestamp"
+        }
+      },
+      "required": ["userId", "email", "createdAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A chat conversation thread with NovaChat",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique conversation ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of conversation",
+          "maxLength": 200
+        },
+        "pinned": {
+          "type": "boolean",
+          "description": "Whether conversation is pinned"
+        },
+        "modelMode": {
+          "type": "string",
+          "description": "Model mode used"
+        },
+        "messages": {
+          "type": "array",
+          "description": "List of chat messages"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last updated timestamp"
+        }
+      },
+      "required": ["id", "userId", "title", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/users/{userId}/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "User conversations"
+    }
+  }
+}

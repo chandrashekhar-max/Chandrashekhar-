@@ -1,0 +1,6 @@
+{
+  "name": "NovaChat - Next-Gen Ultra-Fast AI",
+  "description": "An ultra-smart, lightning-fast conversational AI assistant powered by state-of-the-art reasoning models with real-time streaming, search grounding, code canvas, and speech.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -24,6 +24,80 @@ const ai = new GoogleGenAI({
       'User-Agent': 'aistudio-build',
     },
   },
+// Image Generation Endpoint
+app.post('/api/generate-image', async (req: Request, res: Response) => {
+  try {
+    const { prompt, aspectRatio = '1:1' } = req.body;
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({ error: 'Image prompt is required.' });
+    }
+
+    try {
+      // Primary: Attempt photorealistic generation via gemini-3.1-flash-lite-image
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-image',
+        contents: {
+          parts: [{ text: prompt }],
+        },
+        config: {
+          imageConfig: {
+            aspectRatio: aspectRatio || '1:1',
+          },
+        },
+      });
+
+      for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+          const base64 = part.inlineData.data;
+          const mimeType = part.inlineData.mimeType || 'image/png';
+          return res.json({
+            imageUrl: `data:${mimeType};base64,${base64}`,
+            prompt,
+            model: 'gemini-3.1-flash-lite-image',
+          });
+        }
+      }
+    } catch (imageModelError: any) {
+      console.warn('Image diffusion model note:', imageModelError.message);
+
+      // Intelligent Fallback: Generate rich, beautiful SVG vector artwork using gemini-3.8-flash
+      const svgResponse = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: `You are an elite vector artist and graphic designer. Create a breathtaking, high-detail SVG illustration for: "${prompt}".
+Specifications:
+- Aspect ratio: ${aspectRatio}
+- Include viewBox, width="100%", height="100%"
+- Use modern color palettes, layered geometric depth, gradients (<linearGradient>, <radialGradient>), drop shadows, and visual textures
+- Output ONLY pure, valid SVG code starting with <svg and ending with </svg>. Do not wrap in markdown code fences.`,
+      });
+
+      let svgText = svgResponse.text?.trim() || '';
+      svgText = svgText.replace(/^```(xml|svg)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+      if (svgText.startsWith('<svg') || svgText.includes('<svg')) {
+        const svgStart = svgText.indexOf('<svg');
+        const svgEnd = svgText.lastIndexOf('</svg>') + 6;
+        if (svgStart !== -1 && svgEnd > svgStart) {
+          svgText = svgText.slice(svgStart, svgEnd);
+        }
+        const svgBase64 = Buffer.from(svgText).toString('base64');
+        return res.json({
+          imageUrl: `data:image/svg+xml;base64,${svgBase64}`,
+          svgCode: svgText,
+          prompt,
+          model: 'Nova Vector Diffusion (Gemini 3.8)',
+          note: 'High-detail vector illustration generated.',
+        });
+      }
+
+      throw imageModelError;
+    }
+
+    res.status(500).json({ error: 'No image could be generated.' });
+  } catch (err: any) {
+    console.error('Image generation error:', err);
+    res.status(500).json({ error: err.message || 'Failed to generate image.' });
+  }
 });
 
 interface ChatMessagePart {
@@ -317,82 +391,6 @@ app.post('/api/tts', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('TTS error:', error);
     res.status(500).json({ error: error.message || 'Error producing speech audio.' });
-  }
-});
-
-// Image Generation Endpoint
-app.post('/api/generate-image', async (req: Request, res: Response) => {
-  try {
-    const { prompt, aspectRatio = '1:1' } = req.body;
-    if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({ error: 'Image prompt is required.' });
-    }
-
-    try {
-      // Primary: Attempt photorealistic generation via gemini-3.1-flash-lite-image
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: {
-          parts: [{ text: prompt }],
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: aspectRatio || '1:1',
-          },
-        },
-      });
-
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          const base64 = part.inlineData.data;
-          const mimeType = part.inlineData.mimeType || 'image/png';
-          return res.json({
-            imageUrl: `data:${mimeType};base64,${base64}`,
-            prompt,
-            model: 'gemini-3.1-flash-lite-image',
-          });
-        }
-      }
-    } catch (imageModelError: any) {
-      console.warn('Image diffusion model note:', imageModelError.message);
-
-      // Intelligent Fallback: Generate rich, beautiful SVG vector artwork using gemini-3.8-flash
-      const svgResponse = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: `You are an elite vector artist and graphic designer. Create a breathtaking, high-detail SVG illustration for: "${prompt}".
-Specifications:
-- Aspect ratio: ${aspectRatio}
-- Include viewBox, width="100%", height="100%"
-- Use modern color palettes, layered geometric depth, gradients (<linearGradient>, <radialGradient>), drop shadows, and visual textures
-- Output ONLY pure, valid SVG code starting with <svg and ending with </svg>. Do not wrap in markdown code fences.`,
-      });
-
-      let svgText = svgResponse.text?.trim() || '';
-      svgText = svgText.replace(/^```(xml|svg)?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-      if (svgText.startsWith('<svg') || svgText.includes('<svg')) {
-        const svgStart = svgText.indexOf('<svg');
-        const svgEnd = svgText.lastIndexOf('</svg>') + 6;
-        if (svgStart !== -1 && svgEnd > svgStart) {
-          svgText = svgText.slice(svgStart, svgEnd);
-        }
-        const svgBase64 = Buffer.from(svgText).toString('base64');
-        return res.json({
-          imageUrl: `data:image/svg+xml;base64,${svgBase64}`,
-          svgCode: svgText,
-          prompt,
-          model: 'Nova Vector Diffusion (Gemini 3.8)',
-          note: 'High-detail vector illustration generated.',
-        });
-      }
-
-      throw imageModelError;
-    }
-
-    res.status(500).json({ error: 'No image could be generated.' });
-  } catch (err: any) {
-    console.error('Image generation error:', err);
-    res.status(500).json({ error: err.message || 'Failed to generate image.' });
   }
 });
 

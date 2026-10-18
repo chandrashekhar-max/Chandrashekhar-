@@ -610,7 +610,6 @@ function ChatApp() {
         onTogglePin={handleTogglePin}
         onOpenCustomInstructions={() => setInstructionsModalOpen(true)}
         onOpenBenchmark={() => setBenchmarkModalOpen(true)}
-        onOpenInstall={() => setInstallModalOpen(true)}
         isOpen={sidebarOpen}
         onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
         activeMode={activeMode}
